@@ -3,51 +3,38 @@ import pandas as pd
 from load_csv import load
 from show_data import show
 from sklearn import preprocessing
+from linear_utils import gradient_descent, model, coef_determination
 import matplotlib.pyplot as plt
 import json
 
 
-def model(X, theta):
-    """
-    F = X.θ (f(x)=ax+b), calculates the matricial product of X by θ.
-    """
-    return X.dot(theta)
+def transform_matrices(df):
+    transformer = preprocessing.MinMaxScaler().fit(df[['km']])
+    transformed = transformer.transform(df[['km']])
+        
+    x = np.array(df.iloc[:, 0].values).reshape(-1, 1)
+    Y = np.array(df.iloc[:, 1].values).reshape(-1, 1)
+    nx = transformed[:, 0].reshape(-1, 1)  
+    X = np.hstack((nx, np.ones(nx.shape)))
+    return x, Y, X
 
-def cost_function(X, y, theta):
-    """
-    J(θ) = (1/2m)Σ(Xθ - Y)², calculates the cost ie the mean squared error (mse).
-    """
-    m = len(y)
-    return 1/(2*m) * np.sum((model(X, theta) - y)**2)
+def train_model(X, Y):
+    learning_rate = 0.5
+    n_iterations = 300
 
-def grad(X, y, theta):
-    """
-    Calculates the gradient, ie all derivatives of J for each parameter from vector θ.
-    """
-    m = len(y)
-    return 1/m * X.T.dot(model(X, theta) - y)
+    theta = np.random.randn(2, 1)
+    theta_final, cost_history = gradient_descent(X, Y, theta, learning_rate, n_iterations)
+    thetas = {
+        'Theta0': theta_final[0, 0].item(),
+        'Theta1': theta_final[1, 0].item()
+    }
+    with open('thetas.json', 'w') as file:
+        json.dump(thetas, file)
 
-def gradient_descent(X, y, theta, learning_rate, n_iterations):
-    """
-    Iterates n times by learning_rate step to find θ (parameters with lowest cost).
-    Also returns the cost history to check the cost at each iteration.
-    """
-    cost_history = np.zeros(n_iterations)
-    for i in range(0, n_iterations):
-        theta = theta - learning_rate * grad(X, y, theta)
-        cost_history[i] = cost_function(X, y, theta)
-    return theta, cost_history
+    predictions = model(X, theta_final)
+    coef = coef_determination(Y, predictions)
 
-def coef_determination(y, pred):
-    """
-    Evaluates performance of the model between 0 and 1,
-    the closer to 1 the more performing.
-    """
-    # u = residu de la somme des carrés
-    u = ((y - pred)**2).sum()
-    # v = somme totale des carrés
-    v = ((y - y.mean())**2).sum()
-    return 1 - (u/v)
+    return coef, predictions, cost_history
 
 def main():
     try:
@@ -57,32 +44,9 @@ def main():
         if (df < 0).any().any():
             raise ValueError("Mileage and Price inputs cannot be negative.")
         
-        transformer = preprocessing.MinMaxScaler().fit(df[['km']])
-        transformed = transformer.transform(df[['km']])
-        
-        x = np.array(df.iloc[:, 0].values).reshape(-1, 1)
-        Y = np.array(df.iloc[:, 1].values).reshape(-1, 1)
-        nx = transformed[:, 0].reshape(-1, 1)
-        # print(Y.shape)
-        # print(nx.shape)
-        
-        X = np.hstack((nx, np.ones(nx.shape)))
-        # print(X)
+        x, Y, X = transform_matrices(df)
+        coef, predictions, cost_history = train_model(X, Y)
 
-        theta = np.random.randn(2, 1)
-        learning_rate = 0.5
-        n_iterations = 300
-        theta_final, cost_history = gradient_descent(X, Y, theta, learning_rate, n_iterations)
-        thetas = {
-            'Theta0': theta_final[0, 0].item(),
-            'Theta1': theta_final[1, 0].item()
-        }
-
-        with open('thetas.json', 'w') as file:
-            json.dump(thetas, file)
-
-        predictions = model(X, theta_final)
-        coef = coef_determination(Y, predictions)
         print(f"The precision of the algorithm is of: {coef * 100:.2f}%")
         show(x, Y, predictions)
         # si on veut voir la courbe de coût sur le nb d iteration:

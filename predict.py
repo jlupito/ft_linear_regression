@@ -14,6 +14,8 @@ def main():
 
         theta0 = thetas['Theta1']
         theta1 = thetas['Theta0']
+        # print(theta0)
+        # print(theta1)
 
         while(1):
             mileage = input("What is the mileage of your car ? ")
