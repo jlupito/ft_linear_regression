@@ -1,21 +1,23 @@
 import numpy as np
 import pandas as pd
-from load_csv import load
-from show_data import show
-from sklearn import preprocessing
-from linear_utils import gradient_descent, model, coef_determination
 import matplotlib.pyplot as plt
 import json
+from load_csv import load
+from show_data import show
+from linear_utils import gradient_descent, model, coef_determination
 
 
-def transform_matrices(df):
-    transformer = preprocessing.MinMaxScaler().fit(df[['km']])
-    transformed = transformer.transform(df[['km']])
-        
+def normalize_matrices(df):
     x = np.array(df.iloc[:, 0].values).reshape(-1, 1)
     Y = np.array(df.iloc[:, 1].values).reshape(-1, 1)
-    nx = transformed[:, 0].reshape(-1, 1)  
+    nx = np.zeros(len(x), dtype=float).reshape(-1, 1)
+
+    xmin = np.min(x)
+    xmax = np.max(x)
+    for i in range(len(x)):
+        nx[i] = (x[i] - xmin) / (xmax - xmin)
     X = np.hstack((nx, np.ones(nx.shape)))
+
     return x, Y, X
 
 def train_model(X, Y):
@@ -44,13 +46,13 @@ def main():
         if (df < 0).any().any():
             raise ValueError("Mileage and Price inputs cannot be negative.")
         
-        x, Y, X = transform_matrices(df)
+        x, Y, X = normalize_matrices(df)
         coef, predictions, cost_history = train_model(X, Y)
 
         print(f"The precision of the algorithm is of: {coef * 100:.2f}%")
         show(x, Y, predictions)
         # si on veut voir la courbe de coût sur le nb d iteration:
-        # plt.plot(range(1000), cost_history)
+        # plt.plot(range(300), cost_history)
         # plt.show()
 
     except KeyboardInterrupt:
